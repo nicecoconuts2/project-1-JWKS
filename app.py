@@ -4,7 +4,6 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
 import jwt
-import json
 
 app = Flask(__name__)
 
@@ -25,7 +24,7 @@ def generate_rsa_key():
     return key_id
 
 # JWKS endpoint
-@app.route('/jwks', methods=['GET'])
+@app.route('/.well-known/jwks.json', methods=['GET'])
 def jwks():
     jwks_keys = []
     for kid, (public_key, _, expiration_time) in keys.items():
@@ -38,7 +37,11 @@ def jwks():
                 "n": public_key.public_numbers().n,
                 "e": public_key.public_numbers().e
             })
-    return jsonify(keys=jwks_keys)
+
+    if jwks_keys:
+        return jsonify(keys=jwks_keys), 200
+    else:
+        return jsonify({"error": "No valid keys found."}), 404
 
 # Authentication endpoint
 @app.route('/auth', methods=['POST'])
