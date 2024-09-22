@@ -37,26 +37,24 @@ def jwks():
                 "e": str(public_key.public_numbers().e)   # Convert e to string for JSON
             })
 
-    if jwks_keys:
-        return jsonify(keys=jwks_keys), 200
-    else:
-        return jsonify({"error": "No valid keys found."}), 404
+    return jsonify(keys=jwks_keys), 200 if jwks_keys else (404, {"error": "No valid keys found."})
 
 # Authentication endpoint
 @app.route('/auth', methods=['POST'])
 def authenticate():
     expired = request.args.get('expired')
-    
+
     if expired:
-        if keys:  # Check if there are keys available
-            key_id = list(keys.keys())[0]  # Use the first key for expired token
+        # Use the first key for expired token
+        if keys:
+            key_id = list(keys.keys())[0]
             expiration_time = datetime.utcnow() - timedelta(days=1)  # Set an expired time
         else:
             return jsonify({"error": "No keys available for expired token."}), 400
     else:
         key_id = generate_rsa_key()
         expiration_time = keys[key_id][2]
-        
+
     private_key = keys[key_id][1]
     payload = {'username': 'fakeuser', 'exp': expiration_time}
     
@@ -66,4 +64,3 @@ def authenticate():
 
 if __name__ == '__main__':
     app.run(port=8080)
-
