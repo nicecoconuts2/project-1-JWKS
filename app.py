@@ -41,10 +41,7 @@ def jwks():
             "e": base64url_encode(public_key.public_numbers().e)
         })
 
-    if jwks_keys:
-        return jsonify(keys=jwks_keys), 200
-    else:
-        return jsonify({"error": "No valid keys found."}), 404
+    return jsonify(keys=jwks_keys), 200
 
 # Authentication endpoint
 @app.route('/auth', methods=['POST'])
@@ -61,6 +58,30 @@ def authenticate():
     payload = {'username': 'fakeuser', 'exp': expiration_time.timestamp()}  # Use timestamp for exp
     token = jwt.encode(payload, private_key, algorithm='RS256', headers={'kid': key_id})
     return jsonify(token=token)
+
+# Token verification endpoint
+@app.route('/verify', methods=['POST'])
+def verify_token():
+    token = request.json.get('token')
+    kid = request.json.get('kid')
+
+    # Get the public key from the JWKS
+    public_key = None
+    for key_id, (pub_key, _, _) in keys.items():
+        if key_id == kid:
+            public_key = pub_key
+            break
+
+    if public_key:
+        try:
+            payload = jwt.decode(token, public_key, algorithms=['RS256'])
+            return jsonify(payload=payload), 200
+        except jwt.ExpiredSignatureError:
+            return jsonify({"error": "Token has expired."}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({"error": "Invalid token."}), 401
+    else:
+        return jsonify({"error": "Key ID not found."}), 404
 
 if __name__ == '__main__':
     app.run(port=8080)
