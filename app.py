@@ -23,7 +23,7 @@ def generate_rsa_key():
     keys[key_id] = (public_key, private_key, expiration_time)
     return key_id
 
-# Encode a number to base64url
+# Encode numbers to base64url format
 def base64url_encode(number):
     return base64.urlsafe_b64encode(number.to_bytes((number.bit_length() + 7) // 8, 'big')).decode('utf-8').rstrip('=')
 
@@ -47,13 +47,9 @@ def jwks():
 @app.route('/auth', methods=['POST'])
 def authenticate():
     expired = request.args.get('expired')
-    if expired:
-        key_id = list(keys.keys())[0]  # Choose the first key for expired token
-        expiration_time = datetime.utcnow() - timedelta(days=1)  # Set an expired time
-    else:
-        key_id = generate_rsa_key()
-        expiration_time = keys[key_id][2]
-
+    key_id = generate_rsa_key() if not expired else list(keys.keys())[0]  # Use the first key for expired tokens
+    expiration_time = datetime.utcnow() - timedelta(days=1) if expired else keys[key_id][2]
+    
     private_key = keys[key_id][1]
     payload = {'username': 'fakeuser', 'exp': expiration_time.timestamp()}  # Use timestamp for exp
     token = jwt.encode(payload, private_key, algorithm='RS256', headers={'kid': key_id})
@@ -65,7 +61,7 @@ def verify_token():
     token = request.json.get('token')
     kid = request.json.get('kid')
 
-    # Get the public key from the JWKS
+    # Retrieve the public key from the JWKS
     public_key = None
     for key_id, (pub_key, _, _) in keys.items():
         if key_id == kid:
