@@ -59,7 +59,7 @@ def authenticate():
         expiration_time = keys[key_id][2]
 
     private_key = keys[key_id][1]
-    payload = {'username': 'fakeuser', 'exp': expiration_time}
+    payload = {'username': 'fakeuser', 'exp': expiration_time.timestamp()}  # Use timestamp for exp
     token = jwt.encode(payload, private_key, algorithm='RS256', headers={'kid': key_id})
     return jsonify(token=token)
 
