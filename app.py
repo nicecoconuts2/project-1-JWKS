@@ -33,8 +33,8 @@ def jwks():
                 "kty": "RSA",
                 "alg": "RS256",
                 "use": "sig",
-                "n": public_key.public_numbers().n,
-                "e": str(public_key.public_numbers().e)  # Convert e to string
+                "n": str(public_key.public_numbers().n),  # Convert n to string
+                "e": str(public_key.public_numbers().e)   # Convert e to string
             })
 
     if jwks_keys:
