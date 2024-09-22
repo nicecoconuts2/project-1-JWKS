@@ -33,8 +33,8 @@ def jwks():
                 "kty": "RSA",
                 "alg": "RS256",
                 "use": "sig",
-                "n": str(public_key.public_numbers().n),  # Convert n to string
-                "e": str(public_key.public_numbers().e)   # Convert e to string
+                "n": str(public_key.public_numbers().n),  # Convert n to string for JSON
+                "e": str(public_key.public_numbers().e)   # Convert e to string for JSON
             })
 
     if jwks_keys:
@@ -46,9 +46,10 @@ def jwks():
 @app.route('/auth', methods=['POST'])
 def authenticate():
     expired = request.args.get('expired')
+    
     if expired:
-        if keys:
-            key_id = list(keys.keys())[0]  # Choose the first key for expired token
+        if keys:  # Check if there are keys available
+            key_id = list(keys.keys())[0]  # Use the first key for expired token
             expiration_time = datetime.utcnow() - timedelta(days=1)  # Set an expired time
         else:
             return jsonify({"error": "No keys available for expired token."}), 400
@@ -58,8 +59,11 @@ def authenticate():
         
     private_key = keys[key_id][1]
     payload = {'username': 'fakeuser', 'exp': expiration_time}
+    
+    # Encode the JWT with the appropriate key ID
     token = jwt.encode(payload, private_key, algorithm='RS256', headers={'kid': key_id})
     return jsonify(token=token)
 
 if __name__ == '__main__':
     app.run(port=8080)
+
