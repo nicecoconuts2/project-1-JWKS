@@ -1,6 +1,5 @@
 from flask import Flask, request, jsonify
 from datetime import datetime, timedelta
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
 import jwt
@@ -34,8 +33,8 @@ def jwks():
                 "kty": "RSA",
                 "alg": "RS256",
                 "use": "sig",
-                "n": str(public_key.public_numbers().n),  # Convert to string
-                "e": str(public_key.public_numbers().e)   # Convert to string
+                "n": public_key.public_numbers().n,
+                "e": str(public_key.public_numbers().e)  # Convert e to string
             })
 
     if jwks_keys:
@@ -48,8 +47,11 @@ def jwks():
 def authenticate():
     expired = request.args.get('expired')
     if expired:
-        key_id = list(keys.keys())[0]  # Choose the first key for expired token
-        expiration_time = datetime.utcnow() - timedelta(days=1)  # Set an expired time
+        if keys:
+            key_id = list(keys.keys())[0]  # Choose the first key for expired token
+            expiration_time = datetime.utcnow() - timedelta(days=1)  # Set an expired time
+        else:
+            return jsonify({"error": "No keys available for expired token."}), 400
     else:
         key_id = generate_rsa_key()
         expiration_time = keys[key_id][2]
