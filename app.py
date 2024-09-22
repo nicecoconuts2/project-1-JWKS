@@ -3,13 +3,14 @@ from datetime import datetime, timedelta
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.backends import default_backend
 import jwt
+import base64
 
 app = Flask(__name__)
 
 # Dictionary to store RSA keys with their expiration time
 keys = {}
 
-# Generate a new RSA key pair and store it with an expiration time
+# Generate RSA key pair and store it with an expiration time
 def generate_rsa_key():
     private_key = rsa.generate_private_key(
         public_exponent=65537,
@@ -17,10 +18,14 @@ def generate_rsa_key():
         backend=default_backend()
     )
     public_key = private_key.public_key()
-    key_id = str(len(keys) + 1)  # Unique key ID
+    key_id = str(len(keys) + 1)
     expiration_time = datetime.utcnow() + timedelta(days=30)  # Expiry in 30 days
     keys[key_id] = (public_key, private_key, expiration_time)
     return key_id
+
+# Encode a number to base64url
+def base64url_encode(number):
+    return base64.urlsafe_b64encode(number.to_bytes((number.bit_length() + 7) // 8, 'big')).decode('utf-8').rstrip('=')
 
 # JWKS endpoint
 @app.route('/.well-known/jwks.json', methods=['GET'])
@@ -33,32 +38,28 @@ def jwks():
                 "kty": "RSA",
                 "alg": "RS256",
                 "use": "sig",
-                "n": str(public_key.public_numbers().n),  # Convert to string
-                "e": str(public_key.public_numbers().e)   # Convert to string
+                "n": base64url_encode(public_key.public_numbers().n),
+                "e": base64url_encode(public_key.public_numbers().e)
             })
 
-    return jsonify(keys=jwks_keys), 200 if jwks_keys else (404, {"error": "No valid keys found."})
+    if jwks_keys:
+        return jsonify(keys=jwks_keys), 200
+    else:
+        return jsonify({"error": "No valid keys found."}), 404
 
 # Authentication endpoint
 @app.route('/auth', methods=['POST'])
 def authenticate():
     expired = request.args.get('expired')
-
     if expired:
-        # Check if there are keys available for expired token
-        if keys:
-            key_id = list(keys.keys())[0]  # Use the first key for expired token
-            expiration_time = datetime.utcnow() - timedelta(days=1)  # Set an expired time
-        else:
-            return jsonify({"error": "No keys available for expired token."}), 400
+        key_id = list(keys.keys())[0]  # Choose the first key for expired token
+        expiration_time = datetime.utcnow() - timedelta(days=1)  # Set an expired time
     else:
-        key_id = generate_rsa_key()  # Generate a new key if not expired
+        key_id = generate_rsa_key()
         expiration_time = keys[key_id][2]
 
     private_key = keys[key_id][1]
     payload = {'username': 'fakeuser', 'exp': expiration_time}
-
-    # Encode the JWT with the key ID in the header
     token = jwt.encode(payload, private_key, algorithm='RS256', headers={'kid': key_id})
     return jsonify(token=token)
 
