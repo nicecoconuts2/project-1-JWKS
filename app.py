@@ -31,6 +31,12 @@ def base64url_encode(number):
 @app.route('/.well-known/jwks.json', methods=['GET'])
 def jwks():
     jwks_keys = []
+    current_time = datetime.utcnow()
+    # Remove expired keys from the dictionary
+    keys_to_remove = [kid for kid, (_, _, expiration_time) in keys.items() if current_time >= expiration_time]
+    for kid in keys_to_remove:
+        del keys[kid]
+    
     for kid, (public_key, _, expiration_time) in keys.items():
         jwks_keys.append({
             "kid": kid,
