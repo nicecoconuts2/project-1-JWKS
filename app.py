@@ -32,15 +32,14 @@ def base64url_encode(number):
 def jwks():
     jwks_keys = []
     for kid, (public_key, _, expiration_time) in keys.items():
-        if datetime.utcnow() < expiration_time:
-            jwks_keys.append({
-                "kid": kid,
-                "kty": "RSA",
-                "alg": "RS256",
-                "use": "sig",
-                "n": base64url_encode(public_key.public_numbers().n),
-                "e": base64url_encode(public_key.public_numbers().e)
-            })
+        jwks_keys.append({
+            "kid": kid,
+            "kty": "RSA",
+            "alg": "RS256",
+            "use": "sig",
+            "n": base64url_encode(public_key.public_numbers().n),
+            "e": base64url_encode(public_key.public_numbers().e)
+        })
 
     if jwks_keys:
         return jsonify(keys=jwks_keys), 200
