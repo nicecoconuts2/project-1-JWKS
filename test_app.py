@@ -1,5 +1,5 @@
 import pytest
-from app import app
+from app import app  # Ensure this matches your main application filename
 
 @pytest.fixture
 def client():
@@ -9,12 +9,15 @@ def client():
 def test_jwks(client):
     response = client.get('/.well-known/jwks.json')
     assert response.status_code == 200
-    assert 'keys' in response.get_json()
+    data = response.get_json()
+    assert 'keys' in data
+    assert isinstance(data['keys'], list)
 
 def test_auth(client):
     response = client.post('/auth')
     assert response.status_code == 200
-    assert 'token' in response.get_json()
+    data = response.get_json()
+    assert 'token' in data
 
 def test_verify_token(client):
     auth_response = client.post('/auth')
