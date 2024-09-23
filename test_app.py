@@ -53,5 +53,25 @@ def test_verify_missing_kid(client):
     response = client.post('/verify', json={'token': token})
     assert response.status_code == 400  # Expecting a bad request due to missing 'kid'
 
+def test_verify_invalid_kid(client):
+    auth_response = client.post('/auth', json={'expired': False})
+    token = auth_response.get_json()['token']
+    
+    response = client.post('/verify', json={'token': token, 'kid': 'invalid_id'})
+    assert response.status_code == 404  # Key ID not found
+
+def test_generate_rsa_key(client):
+    # Test the key generation directly
+    key_id = client.application.generate_rsa_key()
+    assert key_id in client.application.keys
+    assert len(client.application.keys) == 1  # Check that a key has been added
+
+def test_jwks_empty_keys(client):
+    # Simulate no keys and test the response
+    client.application.keys.clear()
+    response = client.get('/.well-known/jwks.json')
+    assert response.status_code == 200
+    assert response.get_json() == {'keys': []}
+
 if __name__ == "__main__":
     pytest.main()
